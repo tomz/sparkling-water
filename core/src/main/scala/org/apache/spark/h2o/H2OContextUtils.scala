@@ -21,7 +21,6 @@ import java.io.File
 import java.net.InetAddress
 
 import org.apache.spark.h2o.H2OContextUtils._
-import org.apache.spark.scheduler.cluster.YarnSchedulerBackend
 import org.apache.spark.scheduler.local.LocalBackend
 import org.apache.spark.scheduler.{SparkListenerBlockManagerAdded, SparkListenerBlockManagerRemoved}
 import org.apache.spark.{Accumulable, SparkConf, SparkContext, SparkEnv}
@@ -218,7 +217,8 @@ private[spark] object H2OContextUtils {
 
         val num = sb match {
           case b: LocalBackend => Some(1)
-          case b: YarnSchedulerBackend => Some(ReflectionUtils.reflector(b).getV[Int]("totalExpectedExecutors"))
+          // Use text reference to yarn backend to avoid having dependency on Spark's Yarn module
+          case b if b.getClass.getSimpleName == "YarnSchedulerBackend" => Some(ReflectionUtils.reflector(b).getV[Int]("totalExpectedExecutors"))
           //case b: CoarseGrainedSchedulerBackend => b.numExistingExecutors
           case _ => None
         }
