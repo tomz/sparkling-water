@@ -96,7 +96,7 @@ object KMeansITest {
 
     // Run Kmeans in Spark  on indices 10,19,26 (FlightNo, Distance, WeatherDelay)
 
-    val airlinesVectorRDD = airlinesTable.map(row => Vectors.dense(row.getByte(0) * 1.0, row.getByte(1) * 1.0, row.getByte(2) * 1.0))
+    val airlinesVectorRDD = airlinesTable.rdd.map(row => Vectors.dense(row.getByte(0) * 1.0, row.getByte(1) * 1.0, row.getByte(2) * 1.0))
     val SparkKMTimer = new water.util.Timer
     val clusters = KMeans.train(airlinesVectorRDD, 5, 10)
     val SparkKMBuildTime = SparkKMTimer.time

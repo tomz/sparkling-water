@@ -328,7 +328,7 @@ class H2OInterpreter(val sparkContext: SparkContext, var sessionId: Int) extends
   initializeInterpreter()
 }
 
-object H2OInterpreter{
+object H2OInterpreter {
   /**
     * Return class server output directory of REPL Class server.
  *
@@ -353,7 +353,8 @@ object H2OInterpreter{
   def classServerUri = {
     if (org.apache.spark.repl.Main.interp != null) {
       // Application was started using SparkSubmit
-      org.apache.spark.repl.Main.interp.intp.classServerUri
+      // MM commented > org.apache.spark.repl.Main.interp.intp.classServerUri
+      ""
     } else {
       REPLClassServer.classServerUri
     }

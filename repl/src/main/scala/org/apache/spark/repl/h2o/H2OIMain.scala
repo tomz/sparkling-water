@@ -51,13 +51,13 @@ private[repl] class H2OIMain private(initialSettings: Settings,
     }
   }
 
-  private def _initialize() ={
+  private def _initialize() = {
     try {
       // todo. if this crashes, REPL will hang
       new _compiler.Run().compileSources(_initSources)
       val _initializedCompleteField = this.getClass.getSuperclass.getDeclaredField("_initializeComplete")
       _initializedCompleteField.setAccessible(true)
-      _initializedCompleteField.set(this,true)
+      _initializedCompleteField.set(this, true)
       true
     }
     catch AbstractOrMissingHandler()
