@@ -17,7 +17,7 @@
 
 package water
 
-import org.apache.spark.h2o.H2OContext
+import org.apache.spark.h2o.{H2OConf, H2OContext}
 import org.apache.spark.{SparkConf, SparkContext}
 
 /**
@@ -30,7 +30,9 @@ object SparklingWaterDriver {
   def main(args: Array[String]) {
     // Configure this application
     val conf: SparkConf = new SparkConf().setAppName("Sparkling Water")
-    conf.setIfMissing("spark.master", sys.env.getOrElse("spark.master", "local-cluster[3,2,1024]")).set("spark.ext.h2o.repl.enabled","false")
+    conf.setIfMissing("spark.master", sys.env.getOrElse("spark.master", "local")).set("spark.ext.h2o.repl.enabled","true")
+
+    H2OConf.checkSparkConf(conf)
 
     // Create SparkContext to execute application on Spark cluster
     val sc = new SparkContext(conf)

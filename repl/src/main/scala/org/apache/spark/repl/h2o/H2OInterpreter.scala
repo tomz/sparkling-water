@@ -22,12 +22,15 @@
 
 package org.apache.spark.repl.h2o
 
+
 import java.net.URI
 
+import org.apache.spark.SparkContext
+import org.apache.spark.internal.Logging
 import org.apache.spark.repl.SparkILoop
 import org.apache.spark.sql.SQLContext
 import org.apache.spark.util.Utils
-import org.apache.spark.{Logging, SparkContext}
+
 
 import scala.Predef.{println => _, _}
 import scala.annotation.tailrec
@@ -39,6 +42,7 @@ import scala.tools.nsc.util._
 
 /**
   * H2O Interpreter which is use to interpret scala code
+ *
   * @param sparkContext spark context
   * @param sessionId session ID for interpreter
   */
@@ -65,6 +69,7 @@ class H2OInterpreter(val sparkContext: SparkContext, var sessionId: Int) extends
 
   /**
     * Get response of interpreter
+ *
     * @return
     */
   def interpreterResponse: String = {
@@ -73,6 +78,7 @@ class H2OInterpreter(val sparkContext: SparkContext, var sessionId: Int) extends
 
   /**
     * Redirected printed output coming from commands written in the interpreter
+ *
     * @return
     */
   def consoleOutput: String = {
@@ -81,6 +87,7 @@ class H2OInterpreter(val sparkContext: SparkContext, var sessionId: Int) extends
 
   /**
     * Run scala code in a string
+ *
     * @param code Code to be compiled end executed
     * @return
     */
@@ -106,7 +113,7 @@ class H2OInterpreter(val sparkContext: SparkContext, var sessionId: Int) extends
     addThunk(
       intp.beQuietDuring{
         intp.bind("sc","org.apache.spark.SparkContext", sparkContext ,List("@transient"))
-        intp.bind("sqlContext","org.apache.spark.sql.SQLContext",SQLContext.getOrCreate(sparkContext),List("@transient","implicit"))
+        intp.bind("sqlContext","org.apache.spark.sql.SQLContext",SQLContext.getOrCreate(sparkContext), List("@transient","implicit"))
 
         command(
           """
@@ -148,11 +155,12 @@ class H2OInterpreter(val sparkContext: SparkContext, var sessionId: Int) extends
     val totalClassPath = addedJars.foldLeft(
       settings.classpath.value)((l, r) => ClassPath.join(l, r))
     this.settings.classpath.value = totalClassPath
-    H2OIMain.createInterpreter(sparkContext, settings, responseWriter,sessionId)
+    H2OIMain.createInterpreter(sparkContext, settings, responseWriter, sessionId)
   }
 
   /**
     * Initialize the compiler settings
+ *
     * @return
     */
   private def createSettings(): Settings = {
@@ -328,35 +336,6 @@ class H2OInterpreter(val sparkContext: SparkContext, var sessionId: Int) extends
   initializeInterpreter()
 }
 
-object H2OInterpreter {
-  /**
-    * Return class server output directory of REPL Class server.
- *
-    * @return
-    */
-  def classOutputDir = {
-    if (org.apache.spark.repl.Main.interp != null) {
-      // Application was started using SparkSubmit
-      org.apache.spark.repl.Main.interp.intp.getClassOutputDirectory
-    } else {
-      REPLClassServer.getClassOutputDirectory
-    }
-  }
-
-
-  /**
-    * Return class server uri for REPL Class server.
-    * In local mode the class server is not actually used, all we need is just output directory
- *
-    * @return
-    */
-  def classServerUri = {
-    if (org.apache.spark.repl.Main.interp != null) {
-      // Application was started using SparkSubmit
-      // MM commented > org.apache.spark.repl.Main.interp.intp.classServerUri
-      ""
-    } else {
-      REPLClassServer.classServerUri
-    }
-  }
+object H2OInterpreter{
+  def classOutputDirectory = H2OIMain.classOutputDirectory
 }

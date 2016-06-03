@@ -87,12 +87,12 @@ configure(subprojects) { project ->
     repositories {
         // Should be enabled only in development mode
         if (h2oBuild == '99999') mavenLocal()
-        
-        mavenCentral()
 
         maven {
-            url "https://repository.cloudera.com/artifactory/cloudera-repos/"
+            url "https://repository.apache.org/content/repositories/orgapachespark-1182/"
         }
+        mavenCentral()
+
         // Public Sonatype repository
         maven {
             url "https://oss.sonatype.org/content/repositories/releases/"

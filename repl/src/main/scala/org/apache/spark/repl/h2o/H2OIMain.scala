@@ -17,14 +17,18 @@
 
 package org.apache.spark.repl.h2o
 
-import org.apache.spark.util.MutableURLClassLoader
-import org.apache.spark.{SparkContext, SparkEnv, HttpServer}
+
+import java.io.File
+import java.lang.reflect.Field
+
 import org.apache.spark.annotation.DeveloperApi
 import org.apache.spark.repl.{Main, SparkIMain}
+import org.apache.spark.util.Utils
+import org.apache.spark.{SparkConf, SparkContext, SparkEnv}
+
 
 import scala.collection.mutable
 import scala.reflect.internal.util.BatchSourceFile
-import scala.reflect.io.PlainFile
 import scala.tools.nsc.interpreter.AbstractOrMissingHandler
 import scala.tools.nsc.{Global, Settings, io}
 
@@ -33,19 +37,20 @@ import scala.tools.nsc.{Global, Settings, io}
   * where this class was declared
   */
 private[repl] class H2OIMain private(initialSettings: Settings,
-               interpreterWriter: IntpResponseWriter,
-               val sessionID: Int,
-               propagateExceptions: Boolean = false) extends SparkIMain(initialSettings, interpreterWriter, propagateExceptions){
+                                     interpreterWriter: IntpResponseWriter,
+                                     val sessionID: Int,
+                                     propagateExceptions: Boolean = false) extends{
+  override private[repl] val outputDir: File = H2OIMain.classOutputDirectory
+} with SparkIMain(initialSettings, interpreterWriter, propagateExceptions){
 
-  private val _compiler: Global = getAndSetCompiler()
-  stopClassServer()
   setupClassNames()
 
+  /**
+    * This method has to be overridden because it has to call "overridden" method _initialize
+    */
   @DeveloperApi
   override def initializeSynchronous(): Unit = {
-    val _initializedCompleteField = this.getClass.getSuperclass.getDeclaredField("_initializeComplete")
-    _initializedCompleteField.setAccessible(true)
-    if (!_initializedCompleteField.get(this).asInstanceOf[Boolean]) {
+    if (!getPrivateFieldValue("_initializeComplete").asInstanceOf[Boolean]) {
       _initialize()
       assert(global != null, global)
     }
@@ -54,41 +59,20 @@ private[repl] class H2OIMain private(initialSettings: Settings,
   private def _initialize() = {
     try {
       // todo. if this crashes, REPL will hang
+      val _compiler: Global = getPrivateFieldValue("_compiler").asInstanceOf[Global]
       new _compiler.Run().compileSources(_initSources)
-      val _initializedCompleteField = this.getClass.getSuperclass.getDeclaredField("_initializeComplete")
-      _initializedCompleteField.setAccessible(true)
-      _initializedCompleteField.set(this, true)
+      setPrivateFieldValue("_initializeComplete", true)
       true
     }
     catch AbstractOrMissingHandler()
 
   }
 
-  private def _initSources = List(new BatchSourceFile("<init>", "package intp_id_" + sessionID + " \n class $repl_$init { }"))
-
   /**
-    * Stop class server started in SparkIMain constructor because we have already one running and need to use
-    * that server
+    * This is needed to "override" in order to ensure each interpreter lives in its own package
+    * @return
     */
-  private def stopClassServer(): Unit ={
-    val fieldClassServer =  this.getClass.getSuperclass.getDeclaredField("classServer")
-    fieldClassServer.setAccessible(true)
-    val classServer = fieldClassServer.get(this).asInstanceOf[HttpServer]
-    classServer.stop()
-  }
-
-  private def getAndSetCompiler(): Global = {
-    // need to override virtualDirectory so it uses our directory
-    val fieldVirtualDirectory = this.getClass.getSuperclass.getDeclaredField("org$apache$spark$repl$SparkIMain$$virtualDirectory")
-    fieldVirtualDirectory.setAccessible(true)
-    fieldVirtualDirectory.set(this,new PlainFile(H2OInterpreter.classOutputDir))
-
-    // need to initialize the compiler again so it uses new virtualDirectory
-    val fieldCompiler = this.getClass.getSuperclass.getDeclaredField("_compiler")
-    fieldCompiler.setAccessible(true)
-    fieldCompiler.set(this,newCompiler(settings,reporter))
-    fieldCompiler.get(this).asInstanceOf[Global]
-  }
+  private def _initSources = List(new BatchSourceFile("<init>", "package intp_id_" + sessionID + " \n class $repl_$init { }"))
 
   /**
     * Ensures that before each class is added special prefix identifying the interpreter
@@ -111,20 +95,37 @@ private[repl] class H2OIMain private(initialSettings: Settings,
   }
 
   override private[repl] def initialize(postInitSignal: => Unit): Unit = {
-    val _isInitializedField = this.getClass.getSuperclass.getDeclaredField("_isInitialized")
-    _isInitializedField.setAccessible(true)
     synchronized {
-      if (_isInitializedField.get(this) == null) {
-        _isInitializedField.set(this,io.spawn {
+      if (getPrivateFieldValue("_isInitialized") == null) {
+        setPrivateFieldValue("_isInitialized", io.spawn {
           try _initialize()
           finally postInitSignal
         })
       }
     }
   }
+
+
+  private def getPrivateField(fieldName: String): Field = {
+    val field = this.getClass.getSuperclass.getDeclaredField(fieldName)
+    field.setAccessible(true)
+    field
+  }
+
+  private def getPrivateFieldValue(fieldName: String): AnyRef = {
+    getPrivateField(fieldName).get(this)
+  }
+
+  private def setPrivateFieldValue(fieldName: String, newValue: Any): Field = {
+    val field = getPrivateField(fieldName)
+    field.set(this, newValue)
+    field
+  }
 }
 
 object H2OIMain {
+
+
   val existingInterpreters = mutable.HashMap.empty[Int, H2OIMain]
   private var interpreterClassloader: InterpreterClassLoader = _
   private var _initialized = false
@@ -134,43 +135,22 @@ object H2OIMain {
     SparkEnv.get.closureSerializer.setDefaultClassLoader(classLoader)
   }
 
-  /**
-    * Add directory with classes defined in REPL to the classloader
-   which is used in the local mode. This classloader is obtained using reflections.
-    */
-  private def prepareLocalClassLoader() = {
-    val f = SparkEnv.get.serializer.getClass.getSuperclass.getDeclaredField("defaultClassLoader")
-    f.setAccessible(true)
-    val value = f.get(SparkEnv.get.serializer)
-    value match {
-      case v: Option[_] => {
-        v.get match {
-          case cl: MutableURLClassLoader => cl.addURL(H2OInterpreter.classOutputDir.toURI.toURL)
-          case _ =>
-        }
-      }
-      case _ =>
-    }
-  }
-
   private def initialize(sc: SparkContext): Unit = {
-    if (sc.isLocal) {
-      // using master set to local or local[*]
-      prepareLocalClassLoader()
-      interpreterClassloader = new InterpreterClassLoader()
+
+    if (Main.interp != null) {
+      //application has been started using SparkSubmit, reuse the classloader
+      interpreterClassloader = new InterpreterClassLoader(Main.interp.intp.classLoader)
     } else {
-      if (Main.interp != null) {
-        interpreterClassloader = new InterpreterClassLoader(Main.interp.intp.classLoader)
-      } else {
-        // non local mode, application not started using SparkSubmit
-        interpreterClassloader = new InterpreterClassLoader()
-      }
+      //application hasn't been started using SparkSubmit
+      interpreterClassloader = new InterpreterClassLoader()
     }
     setClassLoaderToSerializers(interpreterClassloader)
   }
+
   def getInterpreterClassloader: InterpreterClassLoader = {
     interpreterClassloader
   }
+
 
   def createInterpreter(sc: SparkContext, settings: Settings, interpreterWriter: IntpResponseWriter, sessionId: Int): H2OIMain = synchronized {
     if(!_initialized){
@@ -180,4 +160,19 @@ object H2OIMain {
     existingInterpreters += (sessionId -> new H2OIMain(settings, interpreterWriter, sessionId, false))
     existingInterpreters(sessionId)
   }
+
+  private lazy val _classOutputDirectory = {
+    if (org.apache.spark.repl.Main.interp != null) {
+      // Application was started using shell, we can reuse this directory
+      org.apache.spark.repl.Main.interp.intp.getClassOutputDirectory
+    } else {
+      // REPL hasn't been started yet, create new directory
+      val conf = new SparkConf()
+      val rootDir = conf.getOption("spark.repl.classdir").getOrElse(Utils.getLocalDir(conf))
+      val outputDir = Utils.createTempDir(root = rootDir, namePrefix = "repl")
+      outputDir
+    }
+  }
+
+  def classOutputDirectory = _classOutputDirectory
 }

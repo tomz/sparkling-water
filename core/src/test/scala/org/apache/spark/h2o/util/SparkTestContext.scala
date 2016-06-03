@@ -19,7 +19,7 @@ package org.apache.spark.h2o.util
 import io.netty.util.internal.logging.{Slf4JLoggerFactory, InternalLoggerFactory}
 import org.apache.spark.sql.SQLContext
 import org.apache.spark.{SparkConf, SparkContext}
-import org.apache.spark.h2o.H2OContext
+import org.apache.spark.h2o.{H2OConf, H2OContext}
 import org.scalatest.{Suite, BeforeAndAfterAll, BeforeAndAfterEach}
 
 /**
@@ -42,7 +42,7 @@ trait SparkTestContext extends BeforeAndAfterEach with BeforeAndAfterAll { self:
     sc = null
     hc = null
   }
-  def defaultSparkConf =  new SparkConf()
+  def defaultSparkConf =  H2OConf.checkSparkConf(new SparkConf())
     .set("spark.ext.h2o.disable.ga", "true")
     .set("spark.driver.memory", "2G")
     .set("spark.executor.memory", "2G")

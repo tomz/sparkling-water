@@ -240,7 +240,7 @@ private[spark] object H2OContextUtils {
  * @param flatfileBVariable Spark's accumulable variable
  */
 private class SparklingWaterConfig(val flatfileBVariable: Accumulable[mutable.HashSet[NodeDesc], NodeDesc])
-  extends AbstractEmbeddedH2OConfig with org.apache.spark.Logging {
+  extends AbstractEmbeddedH2OConfig with org.apache.spark.internal.Logging {
 
   /** String containing a flatfile string filled asynchroniously by different thread. */
   @volatile var flatFile:Option[String] = None

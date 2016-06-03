@@ -18,7 +18,7 @@
 package org.apache.spark.h2o
 
 import org.apache.spark.SparkConf
-import org.apache.spark.h2o.H2OConf._
+import org.apache.spark.repl.h2o.H2OInterpreter
 
 /**
   * Just simple configuration holder which is representing
@@ -142,7 +142,18 @@ trait H2OConf {
          |  drddMulFactor  : $drddMulFactor""".stripMargin
 }
 
-object H2OConf {
+object H2OConf{
+
+  private var _sparkConfChecked = false
+
+  def sparkConfChecked = _sparkConfChecked
+
+  def checkSparkConf(sparkConf: SparkConf): SparkConf = {
+    _sparkConfChecked = true
+    sparkConf.set("spark.repl.class.outputDir", H2OInterpreter.classOutputDirectory.getAbsolutePath)
+    sparkConf
+  }
+
   /* Configuration properties */
 
   /** Configuration property - use flatfile for H2O cloud formation. */

@@ -17,6 +17,7 @@
 
 package org.apache.spark.h2o
 
+import org.apache.spark.internal.Logging
 import org.apache.spark.{SparkEnv, SparkContext}
 import org.apache.spark.h2o.H2OContextUtils._
 import org.apache.spark.scheduler.cluster.CoarseGrainedSchedulerBackend
@@ -31,7 +32,7 @@ private[spark]
 class SpreadRDDBuilder(sc: SparkContext,
                        numExecutorHint: Option[Int] = None) extends {
     val sparkConf = sc.getConf
-  } with H2OConf with org.apache.spark.Logging {
+  } with H2OConf with Logging {
 
   val numExecutors = numH2OWorkers
 
@@ -113,7 +114,10 @@ class SpreadRDDBuilder(sc: SparkContext,
     val sb = sc.schedulerBackend
     sb match {
       case b: LocalBackend => 1
-      case b: CoarseGrainedSchedulerBackend => b.numExistingExecutors
+      case b: CoarseGrainedSchedulerBackend =>
+        val method = classOf[CoarseGrainedSchedulerBackend].getDeclaredMethod("numExistingExecutors")
+        method.setAccessible(true)
+        method.invoke(b).asInstanceOf[Int]
       case _ => sc.getExecutorStorageStatus.length - 1
     }
   }
