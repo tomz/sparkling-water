@@ -7,6 +7,7 @@ import h2o
 from pysparkling.utils import FrameConversions as fc
 import warnings
 from pkg_resources import resource_filename
+from  py4j.java_gateway import java_import
 
 def _monkey_patch_H2OFrame(hc):
     @staticmethod
@@ -89,30 +90,13 @@ class H2OContext(object):
         self._sc._jsc.addJar(get_sw_jar())
 
         # do not instantiate sqlContext when already one exists
-        self._jsqlContext = self._sc._jvm.SQLContext.getOrCreate(self._sc._jsc.sc())
-        self._sqlContext = SQLContext(sparkContext,self._jsqlContext)
+        self._sqlContext = SQLContext.getOrCreate(self._sc)
         self._jsc = sparkContext._jsc
         self._jvm = sparkContext._jvm
         self._gw = sparkContext._gateway
 
-        # Imports Sparkling Water into current JVM view
-        # We cannot use directly Py4j to import Sparkling Water packages
-        #   java_import(sc._jvm, "org.apache.spark.h2o.*")
-        # because of https://issues.apache.org/jira/browse/SPARK-5185
-        # So lets load class directly via classloader
-        # This is finally fixed in Spark 2.0 ( along with other related issues)
-        jvm = self._jvm
-        sc = self._sc
-        gw = self._gw
-        jhc_klazz = self._jvm.java.lang.Thread.currentThread().getContextClassLoader().loadClass("org.apache.spark.h2o.H2OContext")
-        # Find ctor with right spark context
-        jctor_def = gw.new_array(jvm.Class, 1)
-        jctor_def[0] = sc._jsc.getClass()
-        jhc_ctor = jhc_klazz.getConstructor(jctor_def)
-        jctor_params = gw.new_array(jvm.Object, 1)
-        jctor_params[0] = sc._jsc
-        # Create instance of class
-        self._jhc = jhc_ctor.newInstance(jctor_params)
+        # Create H2OContext using Py4J
+        self._jhc = self._gw.jvm.org.apache.spark.h2o.H2OContext(self._jsc)
 
     def start(self):
         """
@@ -155,7 +139,7 @@ class H2OContext(object):
         """
         if isinstance(h2o_frame,H2OFrame):
             j_h2o_frame = h2o_frame.get_java_h2o_frame()
-            jdf = self._jhc.asDataFrame(j_h2o_frame, self._jsqlContext)
+            jdf = self._jhc.asDataFrame(j_h2o_frame, self._sqlContext._ssql_ctx)
             return DataFrame(jdf,self._sqlContext)
 
     def as_h2o_frame(self, dataframe, framename = None):

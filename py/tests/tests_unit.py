@@ -21,6 +21,7 @@ Unit tests for PySparkling;
 
 import unittest
 from pyspark import SparkContext, SparkConf
+from pyspark.sql import SQLContext
 from pysparkling.context import H2OContext
 import h2o
 import test_utils
@@ -31,6 +32,7 @@ class ReusedPySparklingTestCase(unittest.TestCase):
     def setUpClass(cls):
         conf = SparkConf().setAppName("pyunit-test").setMaster("local-cluster[3,1,2048]").set("spark.ext.h2o.disable.ga","true").set("spark.driver.memory", "2g").set("spark.executor.memory", "2g").set("spark.ext.h2o.client.log.level", "DEBUG")
         cls._sc = SparkContext(conf=conf)
+        cls._sql_context = SQLContext.getOrCreate(cls._sc) # we need it in order to convert rdd to dataframe
         cls._hc = H2OContext(cls._sc).start()
 
     @classmethod
@@ -50,7 +52,8 @@ class FrameTransformationsTest(ReusedPySparklingTestCase):
     # test transformation from dataframe to h2o frame
     def test_df_to_h2o_frame(self):
         hc = self._hc
-        df = self._sc.parallelize([(num,"text") for num in range(0,100)]).toDF()
+        rdd = self._sc.parallelize([(num,"text") for num in range(0,100)])
+        df = self._sql_context.createDataFrame(rdd)
         h2o_frame = hc.as_h2o_frame(df)
         self.assertEquals(h2o_frame.nrow, df.count(),"Number of rows should match")
         self.assertEquals(h2o_frame.ncol, len(df.columns),"Number of columns should match")
