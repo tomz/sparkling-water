@@ -65,6 +65,7 @@ trait H2OConf {
   def kerberosLogin = sparkConf.getBoolean(PROP_KERBEROS_LOGIN._1, PROP_KERBEROS_LOGIN._2)
   def loginConf     = sparkConf.getOption(PROP_LOGIN_CONF._1)
   def userName      = sparkConf.getOption(PROP_USER_NAME._1)
+  def sslConf       = sparkConf.getOption(PROP_SSL_CONF._1)
 
   def subseqTries  = sparkConf.getInt(PROP_SUBSEQ_TRIES._1, PROP_SUBSEQ_TRIES._2)
   def scalaIntDefaultNum = sparkConf.getInt(PROP_SCALA_INT_DEFAULT_NUM._1, PROP_SCALA_INT_DEFAULT_NUM._2)
@@ -113,8 +114,8 @@ trait H2OConf {
     // Option in form key=value
     Seq(
       ("-name", cloudName),
-      ("-nthreads", if (nthreads > 0) nthreads else null))
-      .filter(x => x._2 != null)
+      ("-nthreads", if (nthreads > 0) nthreads else null),
+      ("-ssl_config", sslConf.orNull)).filter(x => x._2 != null)
       .flatMap(x => Seq(x._1, x._2.toString)) ++ // Append single boolean options
       Seq(("-ga_opt_out", disableGA))
         .filter(_._2).map(x => x._1)
@@ -246,6 +247,9 @@ object H2OConf {
   val PROP_SPARK_VERSION_CHECK_ENABLED = ("spark.ext.h2o.spark.version.check.enabled",true)
   /** Enable/Disable exit on unsupported Spark parameters. */
   val PROP_FAIL_ON_UNSUPPORTED_SPARK_PARAM = ("spark.ext.h2o.fail.on.unsupported.spark.param",true)
+
+  /** Path to Java KeyStore file. */
+  val PROP_SSL_CONF = ("spark.ext.h2o.ssl.config", null.asInstanceOf[String])
 
   private[spark] def defaultLogDir: String = {
     System.getProperty("user.dir") + java.io.File.separator + "h2ologs"
