@@ -58,6 +58,11 @@ trait H2ORDDLike[T <: Frame] {
     /* Number of columns in the full dataset */
     lazy val ncols = fr.numCols()
 
+    /* Lazily fetched dataframe from K/V store */
+    lazy val fr: Frame = getFrame()
+    /* Number of columns in the full dataset */
+    lazy val ncols = fr.numCols()
+
     /* Converter context */
     val converterCtx: ReadConverterContext
 
