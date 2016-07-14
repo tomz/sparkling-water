@@ -28,7 +28,7 @@ import org.apache.spark.sql.{DataFrame, SQLContext}
 import water._
 
 import scala.collection.mutable
-import scala.language.implicitConversions
+import scala.language.{implicitConversions, postfixOps}
 import scala.reflect.ClassTag
 import scala.reflect.runtime.universe._
 import scala.util.control.NoStackTrace
@@ -57,10 +57,13 @@ import scala.util.control.NoStackTrace
   * @param sparkContext Spark Context
   * @param conf H2O configuration
   */
-class H2OContext private (@transient val sparkContext: SparkContext, @transient conf: H2OConf) extends org.apache.spark.Logging
+class H2OContext private (@transient val sparkContext: SparkContext, @transient conf: H2OConf, sqlc: SQLContext) extends org.apache.spark.Logging
   with Serializable with SparkDataFrameConverter with SupportedRDDConverter with H2OContextUtils{
   self =>
 
+// TODO(vlad): remove it asap, it's temporary
+//  /** Supports call from java environments. */
+//  def this(sparkContext: JavaSparkContext, @transient conf: H2OConf) = this(sparkContext.sc, conf)
 
   /** IP of H2O client */
   private var localClientIp: String = _
@@ -127,6 +130,11 @@ class H2OContext private (@transient val sparkContext: SparkContext, @transient 
   def asH2OFrame(df : DataFrame): H2OFrame = asH2OFrame(df, None)
   def asH2OFrame(df : DataFrame, frameName: Option[String]) : H2OFrame = toH2OFrame(this, df, frameName)
   def asH2OFrame(df : DataFrame, frameName: String) : H2OFrame = asH2OFrame(df, Option(frameName))
+  /** Transforms Dataset[Supported type] to H2OFrame */
+  def asH2OFrame[T](ds: SupportedDataset[T]): H2OFrame = asH2OFrame(ds, None)
+  def asH2OFrame[T](ds: SupportedDataset[T], frameName: Option[String]): H2OFrame =
+    ds.toH2OFrame(sqlc, frameName)
+  def asH2OFrame[T](ds: SupportedDataset[T], frameName: String): H2OFrame = asH2OFrame(ds, Option(frameName))
 
   /** Transform DataFrame to H2OFrame key */
   def toH2OFrameKey(df : DataFrame): Key[Frame] = toH2OFrameKey(df, None)
@@ -210,7 +218,7 @@ class H2OContext private (@transient val sparkContext: SparkContext, @transient 
   // scalastyle:on
 }
 
-object H2OContext extends Logging{
+object H2OContext extends Logging {
 
   private[H2OContext] def setInstantiatedContext(h2oContext: H2OContext): Unit = {
     synchronized {
@@ -238,9 +246,10 @@ object H2OContext extends Logging{
     * @param conf H2O configuration
     * @return H2O Context
     */
-  def getOrCreate(sc: SparkContext, conf: H2OConf): H2OContext = synchronized {
+  def getOrCreate(sc: SparkContext, conf: H2OConf)(implicit sqlContext: SQLContext): H2OContext = synchronized {
+    // TODO(vlad): figure out how thread-safe are these operations IRL
     if (instantiatedContext.get() == null) {
-      instantiatedContext.set(new H2OContext(sc, conf))
+      instantiatedContext.set(new H2OContext(sc, conf, sqlContext))
       instantiatedContext.get().init()
     }
     instantiatedContext.get()
@@ -254,8 +263,8 @@ object H2OContext extends Logging{
     * @param sc Spark Context
     * @return H2O Context
     */
-  def getOrCreate(sc: SparkContext): H2OContext = {
-    getOrCreate(sc, new H2OConf(sc))
+  def getOrCreate(sc: SparkContext)(implicit sqlContext: SQLContext): H2OContext = {
+    getOrCreate(sc, new H2OConf(sc))(sqlContext)
   }
 
 }
