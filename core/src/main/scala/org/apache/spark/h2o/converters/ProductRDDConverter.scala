@@ -29,7 +29,7 @@ import scala.language.implicitConversions
 import scala.reflect.ClassTag
 import scala.reflect.runtime.universe._
 
-private[converters] object ProductRDDConverter extends Logging with ConverterUtils{
+object ProductRDDConverter extends Logging with ConverterUtils{
 
   /** Transform H2OFrame to Product RDD */
   def toRDD[A <: Product: TypeTag: ClassTag, T <: Frame](hc: H2OContext, fr: T): RDD[A] = {

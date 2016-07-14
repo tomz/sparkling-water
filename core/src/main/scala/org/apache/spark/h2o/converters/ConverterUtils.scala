@@ -28,7 +28,7 @@ import scala.collection.mutable.ListBuffer
 import scala.reflect.runtime.universe._
 
 
-private[converters] trait ConverterUtils {
+trait ConverterUtils {
 
 
   def initFrame[T](keyName: String, names: Array[String]):Unit = {

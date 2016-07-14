@@ -73,6 +73,7 @@ class RDDsHandler(val sc: SparkContext, val h2oContext: H2OContext) extends Hand
     if (sc.getPersistentRDDs.get(s.rdd_id).isEmpty) {
       throw new H2ONotFoundArgumentException(s"RDD with ID '${s.rdd_id}' does not exist, can not proceed with the transformation!")
     }
+    // TODO(vlad): take care of the cases when the data are missing
     val rdd = sc.getPersistentRDDs.get(s.rdd_id).get
     val h2oFrame = if(s.h2oframe_id == null) convertToH2OFrame(rdd, None) else convertToH2OFrame(rdd,Some(s.h2oframe_id.toLowerCase))
     s.h2oframe_id = h2oFrame._key.toString
