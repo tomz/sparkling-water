@@ -18,8 +18,8 @@
 package org.apache.spark.h2o
 
 import org.apache.spark.h2o.converters.H2ORDD
-import org.apache.spark.{h2o, SparkContext}
 import org.apache.spark.h2o.utils.SharedSparkTestContext
+import org.apache.spark.{h2o, SparkContext}
 import org.apache.spark.sql.SQLContext
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
@@ -79,7 +79,11 @@ class H2ODatasetTest extends FunSuite with SharedSparkTestContext with BeforeAnd
 
   lazy val testSourceDatasetWithPartialData = sqlContext.createDataset(samplePartialPeople)
 
-  def testH2oFrametWithPartialData: H2OFrame = hc.asH2OFrame(testSourceDatasetWithPartialData)
+  def testH2oFrametWithPartialData: H2OFrame = {
+    hc.asH2OFrame(testSourceDatasetWithPartialData)
+  }
+
+  override def createSparkContext: SparkContext = new SparkContext("local[*]", "test-local", conf = defaultSparkConf)
 
   override def afterAll(): Unit = {
     testH2oFrame.delete()
