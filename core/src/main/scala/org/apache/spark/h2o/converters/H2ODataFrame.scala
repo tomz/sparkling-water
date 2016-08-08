@@ -51,6 +51,7 @@ class H2ODataFrame[T <: water.fvec.Frame](@transient val frame: T,
   val expectedTypesAll: Option[Array[Byte]] = ConverterUtils.prepareExpectedTypes(isExternalBackend, typesAll)
   val colNames = frame.names()
 
+
   @DeveloperApi
   override def compute(split: Partition, context: TaskContext): Iterator[InternalRow] = {
 
