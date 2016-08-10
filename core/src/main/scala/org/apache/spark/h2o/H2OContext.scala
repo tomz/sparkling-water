@@ -19,7 +19,6 @@ package org.apache.spark.h2o
 
 import java.util.concurrent.atomic.AtomicReference
 
-
 import org.apache.spark._
 import org.apache.spark.api.java.{JavaRDD, JavaSparkContext}
 import org.apache.spark.h2o.H2OContextUtils._
@@ -27,7 +26,6 @@ import org.apache.spark.h2o.H2OTypeUtils._
 import org.apache.spark.internal.Logging
 import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.rdd.{H2ORDD, H2OSchemaRDD}
-import org.apache.spark.repl.SparkIMain
 import org.apache.spark.scheduler.{SparkListener, SparkListenerExecutorAdded}
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.{DataFrame, Row, SQLContext}
