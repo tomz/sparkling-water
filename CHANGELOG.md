@@ -4,11 +4,11 @@ ChangeLog
 ##v1.6.6 (2016-08-03)
   - Bug
     - [SW-154](https://0xdata.atlassian.net/browse/SW-154) - Network mask is used in the wrong way on executors
-    - [SW-156](https://0xdata.atlassian.net/browse/SW-156) - Option for switching off quite mode
+    - [SW-156](https://0xdata.atlassian.net/browse/SW-156) - Option to control console verbosity mode
     - [SW-157](https://0xdata.atlassian.net/browse/SW-157) - Include new S3 persist layer in Sparkling Water assembly
 
   - Improvement
-    - [SW-125](https://0xdata.atlassian.net/browse/SW-125) - Upgrade H2O dependency to 3.8.3.2
+    - [SW-163](https://0xdata.atlassian.net/browse/SW-163) - Upgrade H2O dependency to 3.10.0.4
     - Streaming example
 
 ##v1.6.5 (2016-06-06)
