@@ -786,16 +786,7 @@ object H2OContext extends Logging {
     })
   }
   private[h2o] def registerClientWebAPI(sc: SparkContext, h2oContext: H2OContext): Unit = {
-    // Workaround for [SW-132]
-    val doEnableRepl = h2oContext.isH2OReplEnabled && {
-      try {
-        classOf[SparkIMain].getDeclaredField("classServer")
-        true
-      } catch {
-        case e: NoSuchFieldException => false
-      }
-    }
-    if(doEnableRepl){
+    if(h2oContext.isH2OReplEnabled){
       registerScalaIntEndp(sc)
     }
     registerDataFramesEndp(sc, h2oContext)
