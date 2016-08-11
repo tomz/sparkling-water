@@ -25,7 +25,7 @@ import org.apache.spark.ml.param.ParamMap
 import org.apache.spark.ml.util._
 import org.apache.spark.ml.{Model => SparkModel}
 import org.apache.spark.sql.types.{DoubleType, StructField, StructType}
-import org.apache.spark.sql.{DataFrame, Dataset, SQLContext}
+import org.apache.spark.sql.{DataFrame, Dataset, SQLContext, SparkSession}
 import water.app.ModelSerializationSupport
 
 import scala.reflect.ClassTag
@@ -81,7 +81,7 @@ private[models] abstract class H2OModelReader[T <: H2OModel[T, M] : ClassTag, M 
     val file = new File(path, defaultFileName)
     val model = ModelSerializationSupport.loadH2OModel[M](file.toURI)
     implicit val h2oContext = H2OContext.get().getOrElse(throw new RuntimeException("H2OContext has to be started in order to use H2O pipelines elements"))
-    val sqlContext = SQLContext.getOrCreate(sc)
+    val sqlContext = SparkSession.builder().getOrCreate().sqlContext
     val h2oModel = make(model, metadata.uid)(h2oContext, sqlContext)
     DefaultParamsReader.getAndSetParams(h2oModel, metadata)
     h2oModel

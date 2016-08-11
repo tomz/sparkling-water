@@ -23,7 +23,7 @@ import hex.deeplearning.DeepLearning
 import hex.deeplearning.DeepLearningModel.DeepLearningParameters
 import org.apache.spark.h2o.{DoubleHolder, H2OContext, H2OFrame}
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.SQLContext
+import org.apache.spark.sql.SparkSession
 import org.apache.spark.{SparkConf, SparkContext, SparkFiles}
 import water.support.SparkContextSupport
 
@@ -58,7 +58,7 @@ object DeepLearningDemoWithoutExtension extends SparkContextSupport {
     // Filter data with help of Spark SQL
     //
 
-    val sqlContext = new SQLContext(sc)
+    val sqlContext = SparkSession.builder().getOrCreate().sqlContext
     import sqlContext.implicits._ // import implicit conversions
     airlinesTable.toDF.createOrReplaceTempView("airlinesTable")
 

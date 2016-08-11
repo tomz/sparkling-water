@@ -18,10 +18,10 @@
 package org.apache.spark.h2o
 
 import org.apache.spark.internal.Logging
-import org.apache.spark.{SparkEnv, SparkContext}
+import org.apache.spark.{SparkContext, SparkEnv}
 import org.apache.spark.h2o.H2OContextUtils._
 import org.apache.spark.scheduler.cluster.CoarseGrainedSchedulerBackend
-import org.apache.spark.scheduler.local.LocalBackend
+import org.apache.spark.scheduler.local.LocalSchedulerBackend
 
 import scala.annotation.tailrec
 
@@ -112,7 +112,7 @@ class SpreadRDDBuilder(sc: SparkContext,
   private def numOfSparkExecutors = if (sc.isLocal) 1 else {
     val sb = sc.schedulerBackend
     sb match {
-      case b: LocalBackend => 1
+      case b: LocalSchedulerBackend => 1
       case b: CoarseGrainedSchedulerBackend => b.getExecutorIds.length
       case _ => sc.getExecutorStorageStatus.length - 1
     }

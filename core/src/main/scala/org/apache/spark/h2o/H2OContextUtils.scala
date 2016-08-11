@@ -21,10 +21,11 @@ import java.io.File
 import java.net.InetAddress
 
 import org.apache.spark.h2o.H2OContextUtils._
-import org.apache.spark.scheduler.local.LocalBackend
-import org.apache.spark.scheduler.{SparkListenerBlockManagerAdded, SparkListenerBlockManagerRemoved}
-import org.apache.spark.{Accumulable, SparkContext, SparkEnv}
 import org.apache.spark.internal.Logging
+import org.apache.spark.scheduler.local.LocalSchedulerBackend
+import org.apache.spark.scheduler.{SparkListenerBlockManagerAdded, SparkListenerBlockManagerRemoved}
+import org.apache.spark.util.CollectionAccumulator
+import org.apache.spark.{SparkContext, SparkEnv}
 import water.H2OStarter
 import water.init.AbstractEmbeddedH2OConfig
 
@@ -95,7 +96,7 @@ private[spark] object H2OContextUtils {
                 networkMask: Option[String]):Array[NodeDesc] = {
 
     // Create global accumulator for list of nodes IP:PORT
-    val bc = sc.accumulableCollection(new mutable.HashSet[NodeDesc]())
+    val bc = sc.collectionAccumulator[NodeDesc]
     val isLocal = sc.isLocal
     val userSpecifiedCloudSize = sc.getConf.getOption("spark.executor.instances").map(_.toInt)
 
@@ -172,7 +173,7 @@ private[spark] object H2OContextUtils {
         s"executorStatus=${executorStatus.mkString(",")}")
     }
     // Create flatfile string and pass it around cluster
-    val flatFile = bc.value.toArray
+    val flatFile = bc.value.toArray(new Array[NodeDesc](bc.value.size()))
     val flatFileString = toFlatFileString(flatFile)
     // Pass flatfile around cluster
 
@@ -219,7 +220,7 @@ private[spark] object H2OContextUtils {
         val sb = sc.schedulerBackend
 
         val num = sb match {
-          case b: LocalBackend => Some(1)
+          case b: LocalSchedulerBackend => Some(1)
           // Use text reference to yarn backend to avoid having dependency on Spark's Yarn module
           case b if b.getClass.getSimpleName == "YarnSchedulerBackend" => Some(ReflectionUtils.reflector(b).getV[Int]("totalExpectedExecutors"))
           //case b: CoarseGrainedSchedulerBackend => b.numExistingExecutors
@@ -242,7 +243,7 @@ private[spark] object H2OContextUtils {
  *
  * @param flatfileBVariable Spark's accumulable variable
  */
-private class SparklingWaterConfig(val flatfileBVariable: Accumulable[mutable.HashSet[NodeDesc], NodeDesc],
+private class SparklingWaterConfig(val flatfileBVariable: CollectionAccumulator[NodeDesc],
                                    val sparkHostname: Option[String])
   extends AbstractEmbeddedH2OConfig with Logging {
 
@@ -255,7 +256,7 @@ private class SparklingWaterConfig(val flatfileBVariable: Accumulable[mutable.Ha
     val hostname = sparkHostname.getOrElse(ip.getHostAddress)
     val thisNodeInfo = NodeDesc(env.executorId, hostname, port)
     flatfileBVariable.synchronized {
-      flatfileBVariable += thisNodeInfo
+      flatfileBVariable.add(thisNodeInfo)
       flatfileBVariable.notifyAll()
     }
   }

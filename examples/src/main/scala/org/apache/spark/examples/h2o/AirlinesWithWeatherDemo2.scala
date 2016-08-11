@@ -27,7 +27,7 @@ import hex.tree.gbm.GBM
 import hex.tree.gbm.GBMModel.GBMParameters
 import org.apache.spark.h2o.{H2OContext, H2OFrame}
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.SQLContext
+import org.apache.spark.sql.SparkSession
 import org.apache.spark.{SparkConf, SparkContext, SparkFiles}
 import water.Key
 import water.fvec.Frame
@@ -94,7 +94,7 @@ object AirlinesWithWeatherDemo2 extends SparkContextSupport {
     flightsToORD.count
     println(s"\nFlights to ORD: ${flightsToORD.count}\n")
 
-    implicit val sqlContext = new SQLContext(sc)
+    implicit val sqlContext = SparkSession.builder().getOrCreate().sqlContext
     import sqlContext.implicits._ // import implicit conversions
     flightsToORD.toDF.createOrReplaceTempView("FlightsToORD")
     weatherTable.toDF.createOrReplaceTempView("WeatherORD")

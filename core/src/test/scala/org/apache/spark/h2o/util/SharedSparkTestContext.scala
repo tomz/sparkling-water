@@ -18,7 +18,7 @@ package org.apache.spark.h2o.util
 
 import org.apache.spark.SparkContext
 import org.apache.spark.h2o.H2OContext
-import org.apache.spark.sql.SQLContext
+import org.apache.spark.sql.SparkSession
 import org.scalatest.Suite
 
 /** This fixture create a Spark context once and share it over whole run of test suite. */
@@ -30,7 +30,7 @@ trait SharedSparkTestContext extends SparkTestContext { self: Suite =>
   override def beforeAll(): Unit = {
     super.beforeAll()
     sc = createSparkContext
-    sqlc = SQLContext.getOrCreate(sc)
+    sqlc = SparkSession.builder().getOrCreate().sqlContext
     hc = createH2OContext(sc)
   }
 
