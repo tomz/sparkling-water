@@ -238,10 +238,10 @@ object H2OContext extends Logging {
   @transient private val instantiatedContext = new AtomicReference[H2OContext]()
 
   /**
-    * Tries to get existing H2O Context. If it has been created, returns Option containing this H2O Context, otherwise
-    * returns None
+    * Tries to get existing H2O Context. If it has been created, returns this H2O Context, otherwise
+    * returns creates a new one
     *
-    * @return Option containing H2O Context or None
+    * @return H2OContext
     */
   def get(): Option[H2OContext] = Option(instantiatedContext.get())
 
