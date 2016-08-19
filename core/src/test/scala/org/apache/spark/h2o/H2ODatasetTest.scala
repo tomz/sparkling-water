@@ -41,6 +41,8 @@ case class SampleAccount(email: String, name: String, age: Int)
 case class SampleCat(name: String, age: Int)
 case class PartialPerson(name: Option[String], age: Option[Int], email: Option[String])
 case class SemiPartialPerson(name: String, age: Option[Int], email: Option[String])
+case class SampleString(x: String)
+case class SampleAltString(y: String)
 
 @RunWith(classOf[JUnitRunner])
 class H2ODatasetTest extends FunSuite with SharedSparkTestContext with BeforeAndAfterAll {
@@ -120,6 +122,10 @@ class H2ODatasetTest extends FunSuite with SharedSparkTestContext with BeforeAnd
 
   test("Datasets with a projection") {
     checkWith ((n, a, e) => SampleCat(n, a))
+  }
+
+  test("Datasets with a projection to singletons") {
+    checkWith ((n, a, e) => SampleString(n))
   }
 
   test("Converting Total Dataset to Optional") {

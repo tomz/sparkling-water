@@ -55,9 +55,8 @@ class H2OContext (@transient val sparkContext: SparkContext, sqlc: SQLContext) e
   with H2OConf
   with Serializable {
   self =>
-
   /** Supports call from java environments. */
-  def this(sparkContext: JavaSparkContext)(implicit sqlc: SQLContext) = this(sparkContext.sc, sqlc)
+  def this(sparkContext: JavaSparkContext) = this(sparkContext.sc, SQLContext.getOrCreate(sparkContext))
 
   /** Runtime list of active H2O nodes */
   private val h2oNodes = mutable.ArrayBuffer.empty[NodeDesc]
@@ -143,9 +142,9 @@ class H2OContext (@transient val sparkContext: SparkContext, sqlc: SQLContext) e
 
   /** Convert given H2O frame into DataFrame type */
   @deprecated("1.3", "Use asDataFrame")
-  def asSchemaRDD[T <: Frame](fr : T)(implicit sqlContext: SQLContext) : DataFrame = createH2OSchemaRDD(fr)(sqlContext)
-  def asDataFrame[T <: Frame](fr : T)(implicit sqlContext: SQLContext) : DataFrame = createH2OSchemaRDD(fr)(sqlContext)
-  def asDataFrame(s : String)(implicit sqlContext: SQLContext) : DataFrame = createH2OSchemaRDD(new H2OFrame(s))(sqlContext)
+  def asSchemaRDD[T <: Frame](fr : T)(implicit sqlContext: SQLContext) : DataFrame = createH2OSchemaRDD(fr)
+  def asDataFrame[T <: Frame](fr : T)(implicit sqlContext: SQLContext) : DataFrame = createH2OSchemaRDD(fr)
+  def asDataFrame(s : String)(implicit sqlContext: SQLContext) : DataFrame = createH2OSchemaRDD(new H2OFrame(s))
 
   def h2oLocalClient = this.localClientIp + ":" + this.localClientPort
 
@@ -268,10 +267,10 @@ class H2OContext (@transient val sparkContext: SparkContext, sqlc: SQLContext) e
     new H2ORDD[A, T](this, fr)
   }
 
-  def createH2OSchemaRDD[T <: Frame](fr: T)(implicit sqlContext: SQLContext): DataFrame = {
+  def createH2OSchemaRDD[T <: Frame](fr: T): DataFrame = {
     val h2oSchemaRDD = new H2OSchemaRDD(this, fr)
     import org.apache.spark.sql.H2OSQLContextUtils.internalCreateDataFrame
-    internalCreateDataFrame(h2oSchemaRDD, H2OSchemaUtils.createSchema(fr))(sqlContext)
+    internalCreateDataFrame(h2oSchemaRDD, H2OSchemaUtils.createSchema(fr))(sqlc)
   }
 
   /** Open H2O Flow running in this client. */
@@ -335,6 +334,11 @@ class H2OContext (@transient val sparkContext: SparkContext, sqlc: SQLContext) e
 }
 
 object H2OContext extends Logging {
+  def apply(sparkContext: SparkContext, sqlc: SQLContext) =
+  new H2OContext(sparkContext, sqlc)
+
+  def apply(sparkContext: SparkContext) =
+    new H2OContext(sparkContext, SQLContext.getOrCreate(sparkContext))
 
   val UNSUPPORTED_SPARK_OPTIONS = Seq(
     ("spark.dynamicAllocation.enabled", "true"),
@@ -362,7 +366,7 @@ object H2OContext extends Logging {
   private def getOrCreate(sc: SparkContext, h2oWorkers: Option[Int])(implicit sqlContext: SQLContext): H2OContext = synchronized {
     // TODO(vlad): figure out how thread-safe are these operations IRL
     if (instantiatedContext.get() == null) {
-      instantiatedContext.set(new H2OContext(sc, sqlContext))
+      instantiatedContext.set(H2OContext(sc, sqlContext))
       h2oWorkers foreach (instantiatedContext.get().setClusterSize)
       instantiatedContext.get().start()
     }
@@ -387,12 +391,12 @@ object H2OContext extends Logging {
     * @return H2O Context
     */
   def getOrCreate(sc: SparkContext): H2OContext = {
-    getOrCreate(sc, None)(new SQLContext(sc))
+    getOrCreate(sc, None)(SQLContext.getOrCreate(sc))
   }
 
   /** Supports call from java environments. */
   def getOrCreate(sc: JavaSparkContext): H2OContext = {
-    getOrCreate(sc.sc, None)(new SQLContext(sc))
+    getOrCreate(sc.sc, None)(SQLContext.getOrCreate(sc))
   }
 
   /** Supports call from java environments. */
