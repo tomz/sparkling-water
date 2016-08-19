@@ -18,8 +18,8 @@
 package org.apache.spark.h2o
 
 import org.apache.spark.h2o.converters.H2ORDD
-import org.apache.spark.h2o.utils.SharedSparkTestContext
 import org.apache.spark.{h2o, SparkContext}
+import org.apache.spark.h2o.utils.SharedSparkTestContext
 import org.apache.spark.sql.SQLContext
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
@@ -79,33 +79,30 @@ class H2ODatasetTest extends FunSuite with SharedSparkTestContext with BeforeAnd
 
   lazy val testSourceDatasetWithPartialData = sqlContext.createDataset(samplePartialPeople)
 
-  def testH2oFrametWithPartialData: H2OFrame = {
-    hc.asH2OFrame(testSourceDatasetWithPartialData)
+  def testH2oFrametWithPartialData: H2OFrame = hc.asH2OFrame(testSourceDatasetWithPartialData)
+
+  override def afterAll(): Unit = {
+    testH2oFrame.delete()
+    testSourceDataset.unpersist()
   }
 
-  override def createSparkContext: SparkContext = new SparkContext("local[*]", "test-local", conf = defaultSparkConf)
+  test("Dataset[SamplePerson] to H2OFrame and back") {
 
-    override def afterAll(): Unit = {
-      testH2oFrame.delete()
-      testSourceDataset.unpersist()
-    }
-    test("Dataset[SamplePerson] to H2OFrame and back") {
+    assertBasicInvariants(testSourceDataset, testH2oFrame, (row, vec) => {
+      val sample = samplePeople(row.toInt)
+      val valueString = new BufferedString()
+      assert(!vec.isNA(row), "The H2OFrame should not contain any NA values")
 
-      assertBasicInvariants(testSourceDataset, testH2oFrame, (row, vec) => {
-        val sample = samplePeople(row.toInt)
-        val valueString = new BufferedString()
-        assert(!vec.isNA(row), "The H2OFrame should not contain any NA values")
+      val value = vec.atStr(valueString, row)
+      assert(sample.name == value.toString, s"The H2OFrame values should match")
+    }, List("name", "age", "email"))
 
-        val value = vec.atStr(valueString, row)
-        assert(sample.name == value.toString, s"The H2OFrame values should match")
-      }, List("name", "age", "email"))
+    val extracted = readWholeFrame[SamplePerson](testH2oFrame)
 
-      val extracted = readWholeFrame[SamplePerson](testH2oFrame)
+    assert(testSourceDataset.count == testH2oFrame.numRows(), "Number of rows should match")
 
-      assert(testSourceDataset.count == testH2oFrame.numRows(), "Number of rows should match")
-
-      matchData(extracted, samplePeople)
-    }
+    matchData(extracted, samplePeople)
+  }
 
   test("Datasets with a type that does not match") {
 
@@ -127,9 +124,9 @@ class H2ODatasetTest extends FunSuite with SharedSparkTestContext with BeforeAnd
     checkWith ((n, a, e) => SampleCat(n, a))
   }
 
-    test("Datasets with a projection to singletons") {
-      checkWith ((n, a, e) => SampleString(n))
-    }
+  test("Datasets with a projection to singletons") {
+    checkWith ((n, a, e) => SampleString(n))
+  }
 
   test("Converting Total Dataset to Optional") {
     checkWith ((n, a, e) => PartialPerson(Some(n), Some(a), Some(e)))
@@ -150,10 +147,10 @@ class H2ODatasetTest extends FunSuite with SharedSparkTestContext with BeforeAnd
     matchData(extracted, samplePeople)
   }
   test("Dataset[PartialPerson] - extracting SemiPartialPersons should give something") {
-      val rdd0 = new H2ORDD[PartialPerson, H2OFrame](testH2oFrametWithPartialData)(sc)
+    val rdd0 = new H2ORDD[PartialPerson, H2OFrame]( testH2oFrametWithPartialData)(sc)
     val c0 = rdd0.count()
     assert(c0 == 24)
-      val rdd1 = new H2ORDD[SemiPartialPerson, H2OFrame](testH2oFrametWithPartialData)(sc)
+    val rdd1 = new H2ORDD[SemiPartialPerson, H2OFrame]( testH2oFrametWithPartialData)(sc)
     val c1 = rdd1.count()
     assert(c1 > 0)
     val rdd2: RDD[SemiPartialPerson] = hc.asRDD[h2o.SemiPartialPerson](testH2oFrametWithPartialData)
@@ -224,13 +221,10 @@ class H2ODatasetTest extends FunSuite with SharedSparkTestContext with BeforeAnd
     extracted
   }
 
-    def matchData[T <: Product](actual: Seq[T], expected:Seq[T]): Unit = {
-      for {p <- expected} {
-        if (!actual.contains(p)) {
-           println(s"WTF! $p")
-        }
-        assert(actual.contains(p), s"$p not found in the result $actual")
-      }
+  override def createSparkContext: SparkContext = new SparkContext("local[*]", "test-local", conf = defaultSparkConf)
+
+  def matchData[T](actual: Seq[T], expected:Seq[T]): Unit = {
+    for {p <- expected} assert(actual.contains(p), s"$p not found in the result $actual")
     for {p <- actual} assert(expected.contains(p), s"Did not expect $p in the result $expected")
   }
 
