@@ -186,6 +186,7 @@ class H2OContext private (@transient val sparkContext: SparkContext, @transient 
   def asSchemaRDD[T <: Frame](fr : T, copyMetadata: Boolean = true)(implicit sqlContext: SQLContext) : DataFrame = toDataFrame(this, fr, copyMetadata)
   def asDataFrame[T <: Frame](fr : T, copyMetadata: Boolean = true)(implicit sqlContext: SQLContext) : DataFrame = toDataFrame(this, fr, copyMetadata)
   def asDataFrame(s : String, copyMetadata: Boolean)(implicit sqlContext: SQLContext) : DataFrame = toDataFrame(this, new H2OFrame(s), copyMetadata)
+>>>>>>> A couple of tests were failing.
 
   def h2oLocalClient = this.localClientIp + ":" + this.localClientPort
 
@@ -233,6 +234,11 @@ class H2OContext private (@transient val sparkContext: SparkContext, @transient 
 }
 
 object H2OContext extends Logging {
+  def apply(sparkContext: SparkContext, sqlc: SQLContext) =
+  new H2OContext(sparkContext, sqlc)
+
+  def apply(sparkContext: SparkContext) =
+    new H2OContext(sparkContext, SQLContext.getOrCreate(sparkContext))
 
   private[H2OContext] def setInstantiatedContext(h2oContext: H2OContext): Unit = {
     synchronized {
