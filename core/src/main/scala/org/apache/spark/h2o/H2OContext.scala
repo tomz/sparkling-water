@@ -23,6 +23,7 @@ import org.apache.spark._
 import org.apache.spark.api.java.{JavaRDD, JavaSparkContext}
 import org.apache.spark.h2o.H2OContextUtils._
 import org.apache.spark.h2o.H2OTypeUtils._
+import org.apache.spark.listeners.ExecutorAddNotSupportedListener
 import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.rdd.{H2ORDD, H2OSchemaRDD}
 import org.apache.spark.repl.SparkIMain
@@ -183,12 +184,8 @@ class H2OContext (@transient val sparkContext: SparkContext) extends {
     val (spreadRDD, spreadRDDNodes) = createSpreadRDD()
 
     if(isClusterTopologyListenerEnabled){
-      //attach listener which shutdown H2O when we bump into executor we didn't discover during the spreadRDD phase
-      sparkContext.addSparkListener(new SparkListener(){
-        override def onExecutorAdded(executorAdded: SparkListenerExecutorAdded): Unit = {
-          throw new IllegalArgumentException("Executor without H2O instance discovered, killing the cloud!")
-        }
-      })
+      // Attach listener which shutdown H2O when we bump into executor we didn't discover during the spreadRDD phase
+      sparkContext.addSparkListener(new ExecutorAddNotSupportedListener())
     }
     // Start H2O nodes
     // Get executors to execute H2O
