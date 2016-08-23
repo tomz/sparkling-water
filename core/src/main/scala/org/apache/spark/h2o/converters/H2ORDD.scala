@@ -118,9 +118,10 @@ class H2ORDD[A <: Product: TypeTag: ClassTag, T <: Frame] private(@transient val
           j = fr.names().indexOf(name)
         } yield (i, j)
 
-        val bads = mappings collect { case (i, j) if j < 0 => {
-          if (i < colNames.length) colNames(i) else s"Unknown index $i (column of type ${columnTypeNames(i)}"
-        }
+        val bads = mappings collect {
+          case (i, j) if j < 0 => {
+            if (i < colNames.length) colNames(i) else s"[[$i]] (column of type ${columnTypeNames(i)}"
+          }
         }
 
         if (bads.nonEmpty) {
@@ -182,10 +183,11 @@ class H2ORDD[A <: Product: TypeTag: ClassTag, T <: Frame] private(@transient val
             } yield instance
 
             res.toList match {
-            case Nil => None
-            case unique :: Nil => Option(unique)
-            case one :: two :: more => throw new scala.IllegalArgumentException(
-            s"found more than une $jc constructor for given args - can't choose")
+              case Nil => None
+              case unique :: Nil => Option(unique)
+              case one :: two :: more =>
+                throw new scala.IllegalArgumentException(
+                                         s"found more than une $jc constructor for given args - can't choose")
           }
         }
   }
@@ -212,47 +214,4 @@ class H2ORDD[A <: Product: TypeTag: ClassTag, T <: Frame] private(@transient val
 
   private lazy val builders = constructors map Builder
 
-  if (false) {
-
-    val iterator = new H2OChunkIterator[A] {
-
-      val jc = implicitly[ClassTag[A]].runtimeClass
-      val cs = jc.getConstructors
-      val ccr = cs.collectFirst({
-                case c if c.getParameterTypes.length == colNames.length => c
-              })
-        .getOrElse({
-            throw new IllegalArgumentException(
-                  s"Constructor must take exactly ${colNames.length} args")
-      })
-
-      val expectedTypes: Option[Array[Byte]] = ConverterUtils.prepareExpectedTypes(isExternalBackend, types)
-      override val keyName = frameKeyName
-      override val partIndex = 42//split.index
-
-      def next(): A = {
-        val data = new Array[Option[Any]](ncols)
-        // FIXME: this is not perfect since ncols does not need to match number of names
-        (0 until ncols).foreach{ idx =>
-          val value = if (converterCtx.isNA(idx)) None
-          else types(idx) match {
-            case q if q == classOf[Integer]           => Some(converterCtx.getInt(idx))
-            case q if q == classOf[java.lang.Long]    => Some(converterCtx.getLong(idx))
-            case q if q == classOf[java.lang.Double]  => Some(converterCtx.getDouble(idx))
-            case q if q == classOf[java.lang.Float]   => Some(converterCtx.getFloat(idx))
-            case q if q == classOf[java.lang.Boolean] => Some(converterCtx.getBoolean(idx))
-            case q if q == classOf[String] => Option(converterCtx.getString(idx))
-            case _ => None
-          }
-          data(idx) = value
-        }
-
-        converterCtx.increaseRowIdx()
-        // Create instance for the extracted row
-        ccr.newInstance(data:_*).asInstanceOf[A]
-      }
-    }
-
-    ConverterUtils.getIterator[A](isExternalBackend, iterator)
-  }
 }
