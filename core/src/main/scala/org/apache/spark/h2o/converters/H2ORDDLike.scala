@@ -20,12 +20,12 @@ package org.apache.spark.h2o.converters
 import org.apache.spark.Partition
 import water.fvec.{Frame, FrameUtils}
 import water.{DKV, Key}
-import scala.reflect.runtime.universe._
 
 /**
  * Contains functions that are shared between all H2ORDD types (i.e., Scala, Java)
  */
-private[converters] trait H2ORDDLike[T <: Frame] {
+//private[converters]
+trait H2ORDDLike[T <: Frame] {
   /** Underlying DataFrame */
   @transient val frame: T
 
@@ -49,7 +49,6 @@ private[converters] trait H2ORDDLike[T <: Frame] {
 
   /** Base implementation for iterator over rows stored in chunks for given partition. */
   trait H2OChunkIterator[+A] extends Iterator[A] {
-
     /* Key of pointing to underlying dataframe */
     val keyName: String
     /* Partition index */
@@ -59,16 +58,9 @@ private[converters] trait H2ORDDLike[T <: Frame] {
     /* Number of columns in the full dataset */
     lazy val ncols = fr.numCols()
 
-    /** Create new types list which describes expected types in a way external H2O backend can use it. This list
-      * contains types in a format same for H2ODataFrame and H2ORDD */
-    val expectedTypes: Option[Array[Byte]]
-
     /* Converter context */
     lazy val converterCtx: ReadConverterContext =
-      ConverterUtils.getReadConverterContext(isExternalBackend,
-                                             keyName,
-                                             chksLocation,
-                                             expectedTypes,
+      ConverterUtils.getReadConverterContext(keyName,
                                              partIndex)
 
     override def hasNext: Boolean = converterCtx.hasNext
