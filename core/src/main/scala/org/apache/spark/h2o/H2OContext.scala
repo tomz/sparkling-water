@@ -136,12 +136,6 @@ class H2OContext private (@transient val sparkContext: SparkContext, @transient 
   def asH2OFrame[T<: Product : TypeTag](ds: Dataset[T], frameName: Option[String]): H2OFrame =
     ProductRDDConverter.toH2OFrame(self, ds.rdd, frameName)
   def asH2OFrame[T<: Product : TypeTag](ds: Dataset[T], frameName: String): H2OFrame = asH2OFrame(ds, Option(frameName))
-  def asH2OFrame[T<: Product : TypeTag](ds: Dataset[T]): H2OFrame = {
-    asH2OFrame(ds, None)
-  }
-  def asH2OFrame[T<: Product : TypeTag](ds: Dataset[T], frameName: Option[String]): H2OFrame =
-    ProductRDDConverter.toH2OFrame(self, ds.rdd, frameName)
-  def asH2OFrame[T<: Product : TypeTag](ds: Dataset[T], frameName: String): H2OFrame = asH2OFrame(ds, Option(frameName))
 
   /** Transform DataFrame to H2OFrame key */
   def toH2OFrameKey(df : DataFrame): Key[Frame] = toH2OFrameKey(df, None)
