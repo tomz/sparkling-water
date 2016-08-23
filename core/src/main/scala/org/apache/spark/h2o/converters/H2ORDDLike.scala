@@ -54,23 +54,16 @@ trait H2ORDDLike[T <: Frame] {
     /* Partition index */
     val partIndex: Int
     /* Lazily fetched dataframe from K/V store */
-    lazy val fr: Frame = getFrame()
-    /* Number of columns in the full dataset */
-    lazy val ncols = fr.numCols()
-
-    /* Lazily fetched dataframe from K/V store */
-    lazy val fr: Frame = getFrame()
+    lazy val fr: Frame = frameByName
     /* Number of columns in the full dataset */
     lazy val ncols = fr.numCols()
 
     /* Converter context */
-    lazy val converterCtx: ReadConverterContext =
-      ConverterUtils.getReadConverterContext(keyName,
-                                             partIndex)
+    val converterCtx: ReadConverterContext
 
     override def hasNext: Boolean = converterCtx.hasNext
 
-    private def getFrame() = DKV.get(Key.make(keyName)).get.asInstanceOf[Frame]
+    private def frameByName = DKV.get(Key.make(keyName)).get.asInstanceOf[Frame]
   }
 
 }
