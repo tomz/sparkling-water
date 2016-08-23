@@ -43,7 +43,9 @@ private[spark]
 class H2ORDD[A <: Product: TypeTag: ClassTag, T <: Frame] private(@transient val frame: T,
                                                                   val colNames: Array[String])
                                                                  (@transient sc: SparkContext)
-  extends RDD[A](sc, Nil) with H2ORDDLike[T] {
+  extends {
+    override val isExternalBackend = H2OConf(sc).runsInExternalClusterMode
+  } with RDD[A](sc, Nil) with H2ORDDLike[T] {
 
   // Get column names before building an RDD
   def this(@transient fr : T)
@@ -59,8 +61,10 @@ class H2ORDD[A <: Product: TypeTag: ClassTag, T <: Frame] private(@transient val
     }
   }
 
+  /** Number of columns in the full dataset */
+  val numCols = frame.numCols()
   val types = ReflectionUtils.types[A](colNames)
-  override val isExternalBackend = H2OConf(sc).runsInExternalClusterMode
+  val expectedTypesAll: Option[Array[Byte]] = ConverterUtils.prepareExpectedTypes(isExternalBackend, types)
 
   /**
    * :: DeveloperApi ::
@@ -83,9 +87,9 @@ class H2ORDD[A <: Product: TypeTag: ClassTag, T <: Frame] private(@transient val
     "Byte"    -> ((source: ReadConverterContext) => (col: Int) => source.getByte(col)),
     "Double"  -> ((source: ReadConverterContext) => (col: Int) => source.getDouble(col)),
     "Float"   -> ((source: ReadConverterContext) => (col: Int) => source.getFloat(col)),
-    "Integer" -> ((source: ReadConverterContext) => (col: Int) => source.getInt(col).asInstanceOf[Int]),
+    "Integer" -> ((source: ReadConverterContext) => (col: Int) => source.getInt(col)),
     "Long"    -> ((source: ReadConverterContext) => (col: Int) => source.getLong(col)),
-    "Short"   -> ((source: ReadConverterContext) => (col: Int) => source.getShort(col).asInstanceOf[Short]),
+    "Short"   -> ((source: ReadConverterContext) => (col: Int) => source.getShort(col)),
     "String"  -> ((source: ReadConverterContext) => (col: Int) => source.getString(col)))
 
   private def returnOption[X](op: ReadConverterContext => Int => X) = (source: ReadConverterContext) => (col: Int) => opt(op(source)(col))
@@ -119,9 +123,8 @@ class H2ORDD[A <: Product: TypeTag: ClassTag, T <: Frame] private(@transient val
         } yield (i, j)
 
         val bads = mappings collect {
-          case (i, j) if j < 0 => {
+          case (i, j) if j < 0 =>
             if (i < colNames.length) colNames(i) else s"[[$i]] (column of type ${columnTypeNames(i)}"
-          }
         }
 
         if (bads.nonEmpty) {
@@ -190,6 +193,10 @@ class H2ORDD[A <: Product: TypeTag: ClassTag, T <: Frame] private(@transient val
                                          s"found more than une $jc constructor for given args - can't choose")
           }
         }
+
+    override lazy val converterCtx: ReadConverterContext =
+      ConverterUtils.getReadConverterContext(keyName,
+        partIndex)
   }
 
 
