@@ -32,11 +32,15 @@ package object h2o {
 
   type Dataset[X] = org.apache.spark.sql.Dataset[X]
 
-  case class ByteHolder  (result: Option[Byte])
-  case class DoubleHolder(result: Option[Double])
-  case class IntHolder   (result: Option[Int])
-  case class ShortHolder (result: Option[Short])
-  case class StringHolder(result: Option[String])
+  trait Holder[T] {
+    def result: Option[T]
+  }
+
+  case class ByteHolder  (result: Option[Byte])   extends Holder[Byte]
+  case class DoubleHolder(result: Option[Double]) extends Holder[Double]
+  case class IntHolder   (result: Option[Int])    extends Holder[Int]
+  case class ShortHolder (result: Option[Short])  extends Holder[Short]
+  case class StringHolder(result: Option[String]) extends Holder[String]
 
 
   /**

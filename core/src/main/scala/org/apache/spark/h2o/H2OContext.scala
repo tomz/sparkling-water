@@ -62,15 +62,9 @@ class H2OContext private (@transient val sparkContext: SparkContext, @transient 
   with Serializable with SparkDataFrameConverter with SupportedRDDConverter with H2OContextUtils{
   self =>
 
-<<<<<<< a077d4cbc34c02e605746cd789d67bd5c2e3b4c7
   // TODO(vlad): remove it asap, it's temporary
   //  /** Supports call from java environments. */
   //  def this(sparkContext: JavaSparkContext, @transient conf: H2OConf) = this(sparkContext.sc, conf)
-=======
-// TODO(vlad): remove it asap, it's temporary
-//  /** Supports call from java environments. */
-//  def this(sparkContext: JavaSparkContext, @transient conf: H2OConf) = this(sparkContext.sc, conf)
->>>>>>> [SW-158] Added Dataset to H2O spark interface.
 
   /** IP of H2O client */
   private var localClientIp: String = _
@@ -138,17 +132,16 @@ class H2OContext private (@transient val sparkContext: SparkContext, @transient 
   def asH2OFrame(df : DataFrame, frameName: Option[String]) : H2OFrame = toH2OFrame(this, df, frameName)
   def asH2OFrame(df : DataFrame, frameName: String) : H2OFrame = asH2OFrame(df, Option(frameName))
   /** Transforms Dataset[Supported type] to H2OFrame */
-<<<<<<< a077d4cbc34c02e605746cd789d67bd5c2e3b4c7
   def asH2OFrame[T<: Product : TypeTag](ds: Dataset[T]): H2OFrame = asH2OFrame(ds, None)
   def asH2OFrame[T<: Product : TypeTag](ds: Dataset[T], frameName: Option[String]): H2OFrame =
     ProductRDDConverter.toH2OFrame(self, ds.rdd, frameName)
   def asH2OFrame[T<: Product : TypeTag](ds: Dataset[T], frameName: String): H2OFrame = asH2OFrame(ds, Option(frameName))
-=======
-  def asH2OFrame[T](ds: SupportedDataset[T]): H2OFrame = asH2OFrame(ds, None)
-  def asH2OFrame[T](ds: SupportedDataset[T], frameName: Option[String]): H2OFrame =
-    ds.toH2OFrame(sqlc, frameName)
-  def asH2OFrame[T](ds: SupportedDataset[T], frameName: String): H2OFrame = asH2OFrame(ds, Option(frameName))
->>>>>>> [SW-158] Added Dataset to H2O spark interface.
+  def asH2OFrame[T<: Product : TypeTag](ds: Dataset[T]): H2OFrame = {
+    asH2OFrame(ds, None)
+  }
+  def asH2OFrame[T<: Product : TypeTag](ds: Dataset[T], frameName: Option[String]): H2OFrame =
+    ProductRDDConverter.toH2OFrame(self, ds.rdd, frameName)
+  def asH2OFrame[T<: Product : TypeTag](ds: Dataset[T], frameName: String): H2OFrame = asH2OFrame(ds, Option(frameName))
 
   /** Transform DataFrame to H2OFrame key */
   def toH2OFrameKey(df : DataFrame): Key[Frame] = toH2OFrameKey(df, None)
@@ -186,7 +179,6 @@ class H2OContext private (@transient val sparkContext: SparkContext, @transient 
   def asSchemaRDD[T <: Frame](fr : T, copyMetadata: Boolean = true)(implicit sqlContext: SQLContext) : DataFrame = toDataFrame(this, fr, copyMetadata)
   def asDataFrame[T <: Frame](fr : T, copyMetadata: Boolean = true)(implicit sqlContext: SQLContext) : DataFrame = toDataFrame(this, fr, copyMetadata)
   def asDataFrame(s : String, copyMetadata: Boolean)(implicit sqlContext: SQLContext) : DataFrame = toDataFrame(this, new H2OFrame(s), copyMetadata)
->>>>>>> A couple of tests were failing.
 
   def h2oLocalClient = this.localClientIp + ":" + this.localClientPort
 
@@ -234,11 +226,6 @@ class H2OContext private (@transient val sparkContext: SparkContext, @transient 
 }
 
 object H2OContext extends Logging {
-  def apply(sparkContext: SparkContext, sqlc: SQLContext) =
-  new H2OContext(sparkContext, sqlc)
-
-  def apply(sparkContext: SparkContext) =
-    new H2OContext(sparkContext, SQLContext.getOrCreate(sparkContext))
 
   private[H2OContext] def setInstantiatedContext(h2oContext: H2OContext): Unit = {
     synchronized {
@@ -283,7 +270,6 @@ object H2OContext extends Logging {
     * @param sc Spark Context
     * @return H2O Context
     */
-<<<<<<< a077d4cbc34c02e605746cd789d67bd5c2e3b4c7
   def getOrCreate(sc: SparkContext): H2OContext = {
     getOrCreate(sc, new H2OConf(sc))(SQLContext.getOrCreate(sc))
   }
@@ -421,10 +407,6 @@ object H2OContext extends Logging {
 
       MetaInfo(names, vecTypes)
     }
-=======
-  def getOrCreate(sc: SparkContext)(implicit sqlContext: SQLContext): H2OContext = {
-    getOrCreate(sc, new H2OConf(sc))(sqlContext)
->>>>>>> [SW-158] Added Dataset to H2O spark interface.
   }
 
 }

@@ -29,6 +29,7 @@ import scala.language.implicitConversions
 import scala.reflect.ClassTag
 import scala.reflect.runtime.universe._
 
+//private[converters]
 object ProductRDDConverter extends Logging with ConverterUtils{
 
   /** Transform H2OFrame to Product RDD */
@@ -91,6 +92,7 @@ object ProductRDDConverter extends Logging with ConverterUtils{
     it.foreach(prod => { // For all rows which are subtype of Product
       for( i <- 0 until prod.productArity ) { // For all fields...
       val fld = prod.productElement(i)
+        // TODO(vlad): deal properly with Option
         val x = fld match {
           case Some(n) => n
           case _ => fld

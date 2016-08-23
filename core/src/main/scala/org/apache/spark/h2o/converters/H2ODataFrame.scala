@@ -68,7 +68,6 @@ class H2ODataFrame[T <: water.fvec.Frame](@transient val frame: T,
 
       /** Types used for data transfer */
       val types = selectedColumnIndices.map(idx => vecTypeToDataType(fr.vec(idx))).toArray
-      override val expectedTypes: Option[Array[Byte]] = ConverterUtils.prepareExpectedTypes(isExternalBackend, types)
 
       override def next(): InternalRow = {
         /** Mutable reusable row returned by iterator */
@@ -99,6 +98,7 @@ class H2ODataFrame[T <: water.fvec.Frame](@transient val frame: T,
       }
     }
 
+    // TODO(vlad): get rid of booleanness
     // Wrap the iterator to backend specifc wrapper
     ConverterUtils.getIterator[InternalRow](isExternalBackend, iterator)
   }
