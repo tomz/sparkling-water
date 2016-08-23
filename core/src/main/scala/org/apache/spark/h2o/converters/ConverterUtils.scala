@@ -28,7 +28,7 @@ import scala.collection.mutable.ListBuffer
 import scala.reflect.runtime.universe._
 
 
-//private[converters]
+//private[converters] - will uncomment when H2OContext moves into converters
 trait ConverterUtils {
 
 
@@ -107,6 +107,15 @@ object ConverterUtils {
   def getWriteConverterContext(uploadPlan: Option[immutable.Map[Int, NodeDesc]],
                                partitionId: Int): WriteConverterContext = {
     val converterContext = new InternalWriteConverterContext()
+    converterContext
+  }
+
+  def getReadConverterContext(isExternalBackend: Boolean,
+                              keyName: String,
+                              chksLocation: Option[Array[NodeDesc]],
+                              types: Option[Array[Byte]],
+                              chunkIdx: Int): ReadConverterContext = {
+    val converterContext = new InternalReadConverterContext(keyName, chunkIdx)
     converterContext
   }
 
