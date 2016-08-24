@@ -34,14 +34,14 @@ import scala.reflect.runtime.universe._
   * Convert H2OFrame into an RDD (lazily).
   *
   * @param frame  an instance of H2O frame
-  * @param colNames names of columns
+  * @param colNamesInResult names of columns
   * @param sc  an instance of Spark context
   * @tparam A  type for resulting RDD
   * @tparam T  specific type of H2O frame
   */
 private[spark]
 class H2ORDD[A <: Product: TypeTag: ClassTag, T <: Frame] private(@transient val frame: T,
-                                                                  val colNames: Array[String])
+                                                                  val colNamesInResult: Array[String])
                                                                  (@transient sc: SparkContext)
   extends {
     override val isExternalBackend = H2OConf(sc).runsInExternalClusterMode
@@ -52,8 +52,8 @@ class H2ORDD[A <: Product: TypeTag: ClassTag, T <: Frame] private(@transient val
           (@transient sc: SparkContext) = this(fr, ReflectionUtils.names[A])(sc)
 
   // Check that H2OFrame & given Scala type are compatible
-  if (colNames.length > 1) {
-    colNames.foreach { name =>
+  if (colNamesInResult.length > 1) {
+    colNamesInResult.foreach { name =>
       if (frame.find(name) == -1) {
         throw new IllegalArgumentException("Scala type has field " + name +
           " but H2OFrame does not have a matching column; has " + frame.names().mkString(","))
@@ -62,8 +62,11 @@ class H2ORDD[A <: Product: TypeTag: ClassTag, T <: Frame] private(@transient val
   }
 
   /** Number of columns in the full dataset */
-  val numCols = frame.numCols()
-  val types = ReflectionUtils.types[A](colNames)
+  val numColsInFrame = frame.numCols()
+
+  val colNamesInFrame = frame.names()
+
+  val types = ReflectionUtils.types[A](colNamesInResult)
   val expectedTypesAll: Option[Array[Byte]] = ConverterUtils.prepareExpectedTypes(isExternalBackend, types)
 
   /**
@@ -74,7 +77,7 @@ class H2ORDD[A <: Product: TypeTag: ClassTag, T <: Frame] private(@transient val
     new H2ORDDIterator(frameKeyName, split.index)
   }
 
-  private val columnTypeNames = ReflectionUtils.typeNames[A](colNames)
+  private val columnTypeNames = ReflectionUtils.typeNames[A](colNamesInResult)
 
   private val jc = implicitly[ClassManifest[A]].runtimeClass
 
@@ -108,32 +111,32 @@ class H2ORDD[A <: Product: TypeTag: ClassTag, T <: Frame] private(@transient val
   } catch {
     case ex: Exception => None
   }
+  // maps data columns to product components
+  val columnMapping: Map[Int, Int] =
+    if (columnTypeNames.size == 1) Map(0->0) else multicolumnMapping
+
+  def multicolumnMapping: Map[Int, Int] = {
+    try {
+      val mappings = for {
+        i <- columnTypeNames.indices
+        name = colNamesInResult(i)
+        j = colNamesInFrame.indexOf(name)
+      } yield (i, j)
+
+      val bads = mappings collect {
+        case (i, j) if j < 0 =>
+          if (i < colNamesInResult.length) colNamesInResult(i) else s"[[$i]] (column of type ${columnTypeNames(i)}"
+      }
+
+      if (bads.nonEmpty) {
+        throw new scala.IllegalArgumentException(s"Missing columns: ${bads mkString ","}")
+      }
+
+      mappings.toMap
+    }
+  }
 
   class H2ORDDIterator(val keyName: String, val partIndex: Int) extends H2OChunkIterator[A] {
-    // maps data columns to product components
-    val columnMapping: Map[Int, Int] =
-      if (columnTypeNames.size == 1) Map(0->0) else multicolumnMapping
-
-    def multicolumnMapping: Map[Int, Int] = {
-      try {
-        val mappings = for {
-          i <- columnTypeNames.indices
-          name = colNames(i)
-          j = fr.names().indexOf(name)
-        } yield (i, j)
-
-        val bads = mappings collect {
-          case (i, j) if j < 0 =>
-            if (i < colNames.length) colNames(i) else s"[[$i]] (column of type ${columnTypeNames(i)}"
-        }
-
-        if (bads.nonEmpty) {
-          throw new scala.IllegalArgumentException(s"Missing columns: ${bads mkString ","}")
-        }
-
-        mappings.toMap
-      }
-    }
 
     private def cell(i: Int) = {
       val j = columnMapping(i)
@@ -204,11 +207,11 @@ class H2ORDD[A <: Product: TypeTag: ClassTag, T <: Frame] private(@transient val
 
     val cs = jc.getConstructors
     val found = cs.collect {
-      case c if c.getParameterTypes.length == colNames.length => c
+      case c if c.getParameterTypes.length == colNamesInResult.length => c
     }
 
     if (found.isEmpty) throw new scala.IllegalArgumentException(
-      s"Constructor must take exactly ${colNames.length} args")
+      s"Constructor must take exactly ${colNamesInResult.length} args")
 
     found
   }

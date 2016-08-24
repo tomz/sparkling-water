@@ -19,7 +19,6 @@ package org.apache.spark.h2o.converters
 
 import org.apache.spark.Partition
 import water.fvec.{Frame, FrameUtils}
-import water.{DKV, Key}
 
 /**
  * Contains functions that are shared between all H2ORDD types (i.e., Scala, Java)
@@ -53,22 +52,11 @@ trait H2ORDDLike[T <: Frame] {
     val keyName: String
     /* Partition index */
     val partIndex: Int
-    /* Lazily fetched dataframe from K/V store */
-    lazy val fr: Frame = frameByName
-    /* Number of columns in the full dataset */
-    lazy val ncols = fr.numCols()
-
-    /* Lazily fetched dataframe from K/V store */
-    lazy val fr: Frame = getFrame()
-    /* Number of columns in the full dataset */
-    lazy val ncols = fr.numCols()
 
     /* Converter context */
     val converterCtx: ReadConverterContext
 
     override def hasNext: Boolean = converterCtx.hasNext
-
-    private def frameByName = DKV.get(Key.make(keyName)).get.asInstanceOf[Frame]
   }
 
 }
