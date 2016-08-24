@@ -16,6 +16,7 @@ dependencies {
   compile "org.scala-lang:scala-library:${scalaVersion}" 
 }
 
+jar.baseName = "${jar.baseName}_${scalaBaseVersion}"
 shadowJar {
   relocate 'javassist', 'ai.h2o.javassist'
   dependencies {
@@ -53,6 +54,7 @@ shadowJar {
     include(dependency("org.eclipse.jetty.aggregate:jetty-servlet"))
     include(dependency("org.eclipse.jetty:jetty-server"))
     include(dependency("org.eclipse.jetty:jetty-plus:8.1.17.v20150415"))
+    baseName = "${baseName}_${scalaBaseVersion}"
   }
 }
 

@@ -54,6 +54,29 @@ ext {
     ]
 }
 
+def detectScalaVersion(Project project){
+    def defaultScalaVersions = ["2.10" : "2.10.6", "2.11" : "2.11.7"]
+
+    if(project.scalaVersion.count('.') == 1){
+        // only major version was specified
+        if(!defaultScalaVersions.containsKey(project.scalaVersion)){
+            throw new IllegalArgumentException("Unsupported scala version ${project.scalaVersion}, supported scala" +
+                    " major versions are 2.10 and 2.11")
+        }
+        // return default full scala version based on provided major version
+        defaultScalaVersions.get(project.scalaVersion)
+
+    }else{
+        // full version is already specified, but check whether it is supported scala version
+        def scalaBaseVersion = project.scalaVersion.substring(0, project.scalaVersion.lastIndexOf('.'))
+        if(!defaultScalaVersions.containsKey(scalaBaseVersion)){
+            throw new IllegalArgumentException("Unsupported scala version ${project.scalaVersion}, supported scala" +
+                    " major versions are 2.10 and 2.11")
+        }
+
+        project.scalaVersion
+    }
+}
 //
 // For all projects (this and all subprojects) specify common properties and tasks
 //
@@ -64,7 +87,8 @@ configure(allprojects) { project ->
 
     // Version of main components
     ext {
-      scalaVersion       = project.findProperty('scalaVersion') ?: '2.10.6'
+
+      scalaVersion       = detectScalaVersion(project)
       scalaBaseVersion   = scalaVersion.substring(0, scalaVersion.lastIndexOf('.'))
       // h2oBuild property is defined in gradle.properties
       h2oVersion         = "$h2oMajorVersion.$h2oBuild"
